@@ -184,11 +184,13 @@ app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
 
 # ✅ MUHIM QISM (initialize)
-async def startup():
-    await app.initialize()
-    await app.start()
+import asyncio
 
-asyncio.get_event_loop().run_until_complete(startup())
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
+
+loop.run_until_complete(app.initialize())
+loop.run_until_complete(app.start())
 
 
 # -----------------------------
