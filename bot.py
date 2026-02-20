@@ -81,7 +81,7 @@ async def get_ai_response(text):
         instruction = "Javobni faqat lotin alifbosida ber."
 
     response = client.chat.completions.create(
-        model="llama3-8b-8192",
+        model="llama-3.3-70b-versatile",
         messages=[
             {"role": "system", "content": clinic_info},
             {"role": "system", "content": instruction},
