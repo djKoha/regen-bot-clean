@@ -2,7 +2,6 @@
 
 import os
 import json
-import asyncio
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import (
@@ -77,7 +76,7 @@ async def get_ai_response(text):
     """
 
     if any("а" <= c.lower() <= "я" for c in text):
-        instruction = "Жавобни фақат кирилл алифбосида бер."
+        instruction = "Жавобни фақат кирилл алифбосида ber."
     else:
         instruction = "Javobni faqat lotin alifbosida ber."
 
@@ -125,30 +124,7 @@ async def add_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # -----------------------------
-# 6️⃣ /delete
-# -----------------------------
-async def delete_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != ADMIN_ID:
-        await update.message.reply_text("Siz admin emassiz.")
-        return
-
-    if len(context.args) < 1:
-        await update.message.reply_text("Format: /delete savol")
-        return
-
-    question = context.args[0].lower()
-    data = load_data()
-
-    if question in data:
-        del data[question]
-        save_data(data)
-        await update.message.reply_text("❌ O'chirildi.")
-    else:
-        await update.message.reply_text("Topilmadi.")
-
-
-# -----------------------------
-# 7️⃣ Messages
+# 6️⃣ Messages
 # -----------------------------
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text.strip().lower()
@@ -174,29 +150,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # -----------------------------
-# 8️⃣ Telegram App
+# 7️⃣ Telegram App
 # -----------------------------
 app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
 app.add_handler(CommandHandler("add", add_question))
-app.add_handler(CommandHandler("delete", delete_question))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
 
-# ✅ MUHIM QISM (initialize)
-import asyncio
-
-loop = asyncio.new_event_loop()
-asyncio.set_event_loop(loop)
-
-loop.run_until_complete(app.initialize())
-loop.run_until_complete(app.start())
-
-
 # -----------------------------
-# 9️⃣ FastAPI Webhook
+# 8️⃣ FastAPI
 # -----------------------------
 fastapi_app = FastAPI()
+
+@fastapi_app.on_event("startup")
+async def on_startup():
+    await app.initialize()
+    await app.start()
 
 @fastapi_app.post("/")
 async def telegram_webhook(req: Request):
