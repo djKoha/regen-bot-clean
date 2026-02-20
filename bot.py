@@ -180,5 +180,18 @@ app.add_handler(CommandHandler("add", add_question))
 app.add_handler(CommandHandler("delete", delete_question))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-print("✅ Bot ishga tushdi...")
-app.run_polling()
+from fastapi import FastAPI, Request
+
+fastapi_app = FastAPI()
+
+@fastapi_app.post("/")
+async def telegram_webhook(req: Request):
+    data = await req.json()
+
+    if "message" not in data:
+        return {"ok": True}
+
+    update = Update.de_json(data, app.bot)
+    await app.process_update(update)
+
+    return {"ok": True}
