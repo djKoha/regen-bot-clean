@@ -11,26 +11,29 @@ from telegram.ext import (
     filters,
     ContextTypes
 )
-from openai import OpenAI
 from rapidfuzz import fuzz
+from groq import Groq
 
 
 # -----------------------------
 # 1️⃣ ENV файлни юклаш
 # -----------------------------
-load_dotenv("config.env")
+load_dotenv()
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
-client = OpenAI(api_key=OPENAI_API_KEY)
+client = Groq(api_key=GROQ_API_KEY)
 
 
 # -----------------------------
 # 2️⃣ JSON базани ўқиш / сақлаш
 # -----------------------------
 def load_data():
+    if not os.path.exists("data.json"):
+        return {}
+
     with open("data.json", "r", encoding="utf-8") as f:
         return json.load(f)
 
@@ -49,8 +52,8 @@ def translit_to_latin(text):
         "ж":"j","з":"z","и":"i","й":"y","к":"k","л":"l","м":"m",
         "н":"n","о":"o","п":"p","р":"r","с":"s","т":"t","у":"u",
         "ф":"f","х":"x","ц":"ts","ч":"ch","ш":"sh","щ":"sh",
-        "ъ":"","ь":"","э":"e","ю":"yu","я":"ya","қ":"q","ғ":"g",
-        "ҳ":"h","ў":"o"
+        "ъ":"","ь":"","э":"e","ю":"yu","я":"ya",
+        "қ":"q","ғ":"g","ҳ":"h","ў":"o"
     }
 
     result = ""
@@ -61,13 +64,14 @@ def translit_to_latin(text):
 
 
 # -----------------------------
-# 4️⃣ AI жавоб
+# 4️⃣ AI жавоб (Groq)
 # -----------------------------
 async def get_ai_response(text):
 
     clinic_info = """
     ReGen klinikasi Buxoro shahar Mustaqillik ko'chasi xxx uyda joylashgan.
     Orinter: Markaziy bank to'g'risi.
+    Faqat klinika haqida javob ber.
     """
 
     if any("а" <= c.lower() <= "я" for c in text):
@@ -76,12 +80,13 @@ async def get_ai_response(text):
         instruction = "Javobni faqat lotin alifbosida ber."
 
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="llama3-8b-8192",
         messages=[
             {"role": "system", "content": clinic_info},
             {"role": "system", "content": instruction},
             {"role": "user", "content": text}
-        ]
+        ],
+        temperature=0.3
     )
 
     return response.choices[0].message.content
@@ -158,7 +163,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             highest_score = score
             best_match = question
 
-    # 55% оптимал
     if highest_score >= 55:
         reply = data[best_match]
     else:
