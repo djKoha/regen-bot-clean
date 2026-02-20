@@ -141,7 +141,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             highest_score = score
             best_match = question
 
-    if highest_score >= 55:
+    if highest_score >= 70:
         reply = data[best_match]
     else:
         reply = await get_ai_response(user_text)
