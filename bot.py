@@ -2,6 +2,7 @@
 
 import os
 import json
+import asyncio
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import (
@@ -13,10 +14,11 @@ from telegram.ext import (
 )
 from rapidfuzz import fuzz
 from groq import Groq
+from fastapi import FastAPI, Request
 
 
 # -----------------------------
-# 1️⃣ ENV файлни юклаш
+# 1️⃣ ENV
 # -----------------------------
 load_dotenv()
 
@@ -28,7 +30,7 @@ client = Groq(api_key=GROQ_API_KEY)
 
 
 # -----------------------------
-# 2️⃣ JSON базани ўқиш / сақлаш
+# 2️⃣ JSON база
 # -----------------------------
 def load_data():
     if not os.path.exists("data.json"):
@@ -64,7 +66,7 @@ def translit_to_latin(text):
 
 
 # -----------------------------
-# 4️⃣ AI жавоб (Groq)
+# 4️⃣ Groq
 # -----------------------------
 async def get_ai_response(text):
 
@@ -93,7 +95,7 @@ async def get_ai_response(text):
 
 
 # -----------------------------
-# 5️⃣ Админ: /add
+# 5️⃣ /add
 # -----------------------------
 async def add_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
@@ -119,11 +121,11 @@ async def add_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     save_data(data)
 
-    await update.message.reply_text("✅ Bir nechta kalit so'z qo'shildi.")
+    await update.message.reply_text("✅ Qo'shildi.")
 
 
 # -----------------------------
-# 6️⃣ Админ: /delete
+# 6️⃣ /delete
 # -----------------------------
 async def delete_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
@@ -146,7 +148,7 @@ async def delete_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # -----------------------------
-# 7️⃣ Одатий хабарлар
+# 7️⃣ Messages
 # -----------------------------
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text.strip().lower()
@@ -172,7 +174,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # -----------------------------
-# 8️⃣ Ботни ишга тушириш
+# 8️⃣ Telegram App
 # -----------------------------
 app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
@@ -180,16 +182,23 @@ app.add_handler(CommandHandler("add", add_question))
 app.add_handler(CommandHandler("delete", delete_question))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-from fastapi import FastAPI, Request
 
+# ✅ MUHIM QISM (initialize)
+async def startup():
+    await app.initialize()
+    await app.start()
+
+asyncio.get_event_loop().run_until_complete(startup())
+
+
+# -----------------------------
+# 9️⃣ FastAPI Webhook
+# -----------------------------
 fastapi_app = FastAPI()
 
 @fastapi_app.post("/")
 async def telegram_webhook(req: Request):
     data = await req.json()
-
-    if "message" not in data:
-        return {"ok": True}
 
     update = Update.de_json(data, app.bot)
     await app.process_update(update)
